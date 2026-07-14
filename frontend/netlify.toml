@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# React Router does client-side routing — without this, refreshing on
+# any route other than "/" (e.g. /quests, /settings) returns a 404 from
+# Netlify because there's no actual /quests file on disk.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
