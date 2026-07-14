@@ -43,7 +43,7 @@ export const typeOrmDataSourceOptions: DataSourceOptions = {
   username: process.env.DB_USER ?? 'limitless',
   password: process.env.DB_PASSWORD ?? 'change_me',
   database: process.env.DB_NAME ?? 'project_limitless',
-  ssl: process.env.DB_SSL === 'true',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   entities,
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,
