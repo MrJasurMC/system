@@ -51,7 +51,7 @@ import { ChroniclesModule } from '@/chronicles/chronicles.module';
           username,
           password,
           database: config.get<string>('DB_NAME') ?? 'project_limitless',
-          ssl: config.get('DB_SSL') === 'true',
+          ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
           entities,
           synchronize: config.get('NODE_ENV') !== 'production',
           autoLoadEntities: true,
