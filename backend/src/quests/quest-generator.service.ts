@@ -137,49 +137,99 @@ export class QuestGeneratorService {
    * instead of repeating the same routine forever.
    */
   /**
-   * PROJECT TOJI — full-body daily quest with weekly-progressive rep
-   * targets. Same exercise list every day; only the numbers climb week
-   * over week.
+   * PROJECT TOJI — real Pull/Push-Core/Legs split instead of hitting every
+   * muscle group every day. Daily max-effort volume on the same movements
+   * (esp. pull ups/chin ups) never lets those muscles recover, which trains
+   * work-capacity/endurance instead of size. Splitting means each muscle
+   * group gets one real max-effort day + several rest days before it's
+   * loaded hard again, which is what actually drives hypertrophy.
    *
-   * Weekly-progressive full-body daily quest (replaces the old Pull/Push/
-   * Legs split). Same 5 exercises every day — push ups, pull ups, chin ups,
-   * dead hang, squats — with rep targets that climb +5/week (push/squat) or
-   * +1/week (pull/chin, since those are much harder to add volume to) until
-   * a sane cap, after which the target holds and further progress should
-   * come from harder variants (weighted backpack, slow negatives) rather
-   * than more reps. Dead hang stays a max-effort "beat your last time" test
-   * rather than a fixed number, since that's what it actually is.
+   * Schedule (0=Sun ... 6=Sat):
+   *   Tue (2) — Pull day: back/arms/grip (Predator's Back + Titan Arms + Iron Grip)
+   *   Thu (4) — Push/Core day: shoulders/core (Broad Shoulders + Steel Core)
+   *   Sat (6) — Leg day: Monster Legs
+   *   Sun (0) — Boss Day: full-body max-effort test (also the existing World
+   *             Boss weekend window in bosses.service.ts — this is the
+   *             training analogue of that fight)
+   *   Mon/Wed/Fri — active recovery: mobility + light conditioning only, no
+   *             max-effort lifting, so Tue/Thu/Sat muscles actually rebuild.
    *
-   * Every 7th day is a 60%-volume day instead of a full rest day — zero
-   * rest days while testing daily pull/chin-up max volume risks tendon
-   * overuse, so this keeps the same full-body format daily while still
-   * giving joints a lighter day on a weekly cycle.
+   * Rep targets still climb weekly (+5/week push/squat family, +1/week
+   * pull/chin, since those are much harder to add volume to) until a sane
+   * cap, after which progress should come from harder variants (weighted
+   * backpack, slow negatives, wider grip) rather than more reps.
    */
-  private buildFullBodyQuest(programWeek: number, dayOfWeek: number): { lines: string[]; attributeReward: Record<string, number>; title: string } {
+  private buildFullBodyQuest(programWeek: number, dayOfWeek: number): { lines: string[]; attributeReward: Record<string, number>; title: string; dayType: 'training' | 'boss' | 'rest' } {
     const pushUps = Math.min(50 + 5 * programWeek, 150);
     const squats = Math.min(100 + 5 * programWeek, 200);
     const pullUps = Math.min(20 + 1 * programWeek, 40);
     const chinUps = Math.min(20 + 1 * programWeek, 40);
+    const round5 = (n: number) => Math.max(5, Math.round(n / 5) * 5);
 
-    const isRecoveryDay = dayOfWeek === 0; // Sunday — lighter, not zero
-    const scale = isRecoveryDay ? 0.6 : 1;
-    const scaled = (n: number) => Math.round((n * scale) / 5) * 5; // round to nearest 5 for clean targets
-
-    const title = isRecoveryDay ? 'Full Body Trial — Recovery Day' : 'Full Body Trial';
-    const lines = [
-      `Push Ups — ${scaled(pushUps)} total (broken into sets as needed)`,
-      `Pull Ups — ${scaled(pullUps)} total`,
-      `Chin Ups — ${scaled(chinUps)} total`,
-      `Squats — ${scaled(squats)} total`,
-      "Dead Hang — hold as long as you can, beat your last time",
-    ];
-
-    const attributeReward: Record<string, number> = {
-      strength: isRecoveryDay ? 1 : 3,
-      endurance: isRecoveryDay ? 1 : 2,
-    };
-
-    return { lines, attributeReward, title };
+    switch (dayOfWeek) {
+      case 2: // Tuesday — Pull Day
+        return {
+          title: "Pull Day — The Predator's Back",
+          dayType: 'training',
+          lines: [
+            `Pull Ups — ${pullUps} total (broken into sets to near-failure)`,
+            `Chin Ups — ${chinUps} total, close grip`,
+            `Towel Pull Ups — ${round5(pullUps * 0.4)} total (grip/forearm work)`,
+            'Dead Hang — hold as long as you can, beat your last time',
+          ],
+          attributeReward: { strength: 3, endurance: 1 },
+        };
+      case 4: // Thursday — Push/Core Day
+        return {
+          title: 'Push & Core Day — Broad Shoulders, Steel Core',
+          dayType: 'training',
+          lines: [
+            `Push Ups — ${round5(pushUps)} total`,
+            `Pike Push Ups — ${round5(pushUps * 0.4)} total (shoulders)`,
+            `Diamond Push Ups — ${round5(pushUps * 0.3)} total (triceps)`,
+            `Leg Raises — ${round5(pushUps * 0.3)} total`,
+            'Plank Hold — 3 rounds, max time each',
+          ],
+          attributeReward: { strength: 2, endurance: 2 },
+        };
+      case 6: // Saturday — Leg Day
+        return {
+          title: 'Leg Day — Monster Legs',
+          dayType: 'training',
+          lines: [
+            `Squats — ${round5(squats)} total`,
+            `Jump Squats — ${round5(squats * 0.25)} total (explosiveness)`,
+            `Bulgarian Split Squats — ${round5(squats * 0.2)} total, split both legs`,
+            `Calf Raises — ${round5(squats * 0.4)} total`,
+          ],
+          attributeReward: { strength: 2, speed: 1 },
+        };
+      case 0: // Sunday — Boss Day
+        return {
+          title: 'BOSS DAY — Full Body Trial',
+          dayType: 'boss',
+          lines: [
+            `Pull Ups — max effort set, record the number (target: ${pullUps})`,
+            `Push Ups — ${round5(pushUps)} total`,
+            `Squats — ${round5(squats)} total`,
+            'Dead Hang — max effort, beat your last time',
+            'Plank Hold — 1 max-effort round',
+          ],
+          attributeReward: { strength: 3, endurance: 2, agility: 1 },
+        };
+      default: // Mon/Wed/Fri — Active Recovery
+        return {
+          title: 'Active Recovery Day',
+          dayType: 'rest',
+          lines: [
+            'Light Walk or Jog — 20-25 min, easy pace',
+            'Full Body Stretch / Mobility — 10 min (shoulders, hips, hamstrings)',
+            'Optional: Light Plank Hold — 2x30 sec, only if you feel fresh',
+            "No max-effort lifting today — this is what lets Tue/Thu/Sat's muscle actually rebuild",
+          ],
+          attributeReward: { endurance: 1 },
+        };
+    }
   }
 
   /**
@@ -396,7 +446,7 @@ export class QuestGeneratorService {
     const daysSinceStart = Math.floor((Date.now() - character.createdAt.getTime()) / (24 * 60 * 60 * 1000));
     const programWeek = Math.min(Math.floor(daysSinceStart / 7), 52); // year-long program
     const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
-    const { lines, attributeReward, title: dayTitle } = this.buildFullBodyQuest(programWeek, dayOfWeek);
+    const { lines, attributeReward, title: dayTitle, dayType } = this.buildFullBodyQuest(programWeek, dayOfWeek);
 
     const rarity = rollRarity(streak);
 
@@ -407,9 +457,9 @@ export class QuestGeneratorService {
 
     // Streak bonus grows with consistency but is capped so it never dwarfs base rewards.
     const streakMultiplier = 1 + Math.min(streak * 0.02, 0.5);
-    // Recovery day pays out less than a full training day — same idea as before, just lighter instead of zero.
-    const isRecoveryDay = dayTitle === 'Full Body Trial — Recovery Day';
-    const dayMultiplier = isRecoveryDay ? 0.7 : 1;
+    // Rest days pay out less than training/boss days — lighter load, lighter reward.
+    // Boss day pays a bit more than a normal training day since it's max-effort across everything.
+    const dayMultiplier = dayType === 'rest' ? 0.5 : dayType === 'boss' ? 1.2 : 1;
 
     const baseXp = Math.round((300 + level * 20) * streakMultiplier * dayMultiplier);
     const baseGold = Math.round((100 + level * 5) * streakMultiplier * dayMultiplier);
@@ -422,9 +472,9 @@ export class QuestGeneratorService {
         title: `${dayTitle} — Day ${streak + 1}${rarityLabel}`,
         description: `PROJECT TOJI · Week ${programWeek + 1}\n\n${lines.map((l) => `- ${l}`).join('\n')}`,
         type: QuestType.MAIN_DAILY,
-        difficulty: isRecoveryDay ? QuestDifficulty.EASY : programWeek >= 13 ? QuestDifficulty.HARD : QuestDifficulty.NORMAL,
+        difficulty: dayType === 'rest' ? QuestDifficulty.EASY : dayType === 'boss' || programWeek >= 13 ? QuestDifficulty.HARD : QuestDifficulty.NORMAL,
         rarity,
-        estimatedTime: isRecoveryDay ? 25 : 40,
+        estimatedTime: dayType === 'rest' ? 20 : 40,
         goal: 'Complete Daily Workout',
         goalValue: 1,
         xpReward,
