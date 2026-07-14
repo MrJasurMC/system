@@ -30,14 +30,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  onModuleInit(): void {
+onModuleInit(): void {
+    const password = this.config.get<string>('REDIS_PASSWORD');
     this.client = new Redis({
       host: this.config.get<string>('REDIS_HOST') ?? 'localhost',
       port: Number(this.config.get('REDIS_PORT') ?? 6379),
+      password: password && password.length > 0 ? password : undefined,
+      tls: this.config.get('REDIS_TLS') === 'true' ? {} : undefined,
       lazyConnect: false,
       maxRetriesPerRequest: 3,
-      // Keep retrying with a capped backoff instead of giving up — a
-      // transient Redis blip shouldn't need a process restart to recover.
       retryStrategy: (attempt: number) => Math.min(attempt * 200, 5000),
     });
 
