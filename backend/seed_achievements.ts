@@ -12,6 +12,7 @@ const dataSource = new DataSource({
   database: process.env.DB_NAME || 'project_limitless',
   entities: [__dirname + '/src/**/*.entity.ts'],
   synchronize: false,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 interface AchievementSeed {

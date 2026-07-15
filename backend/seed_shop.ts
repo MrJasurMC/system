@@ -12,31 +12,62 @@ const dataSource = new DataSource({
   database: process.env.DB_NAME || 'project_limitless',
   entities: [__dirname + '/src/**/*.entity.ts'],
   synchronize: false,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 });
 
 const REWARDS = [
-  // Commons
+  // ── Commons (cheap, everyday treats) ──
   { name: 'Gaming 1 Hour', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.COMMON, price: 100, icon: 'item-entertainment' },
   { name: 'Watch Anime 1 Hour', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.COMMON, price: 100, icon: 'item-entertainment' },
+  { name: 'Watch 1 Movie', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.COMMON, price: 180, icon: 'item-entertainment' },
+  { name: 'Listen to Music Playlist', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.COMMON, price: 60, icon: 'item-entertainment' },
+  { name: 'YouTube Binge 1 Hour', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.COMMON, price: 90, icon: 'item-entertainment' },
   { name: 'Favorite Snack', category: ItemCategory.FOOD, rarity: ItemRarity.COMMON, price: 150, icon: 'item-food' },
-  { name: 'Sleep Extra 1 Hour', category: ItemCategory.RECOVERY, rarity: ItemRarity.COMMON, price: 120, icon: 'item-recovery' },
   { name: 'Buy Coffee/Drink', category: ItemCategory.FOOD, rarity: ItemRarity.COMMON, price: 80, icon: 'item-food' },
+  { name: 'Ice Cream Treat', category: ItemCategory.FOOD, rarity: ItemRarity.COMMON, price: 130, icon: 'item-food' },
+  { name: 'Bubble Tea', category: ItemCategory.FOOD, rarity: ItemRarity.COMMON, price: 110, icon: 'item-food' },
+  { name: 'Chocolate Bar', category: ItemCategory.FOOD, rarity: ItemRarity.COMMON, price: 70, icon: 'item-food' },
+  { name: 'Sleep Extra 1 Hour', category: ItemCategory.RECOVERY, rarity: ItemRarity.COMMON, price: 120, icon: 'item-recovery' },
+  { name: 'Nap 30 Minutes', category: ItemCategory.RECOVERY, rarity: ItemRarity.COMMON, price: 80, icon: 'item-recovery' },
+  { name: 'Hot Bath / Shower Break', category: ItemCategory.RECOVERY, rarity: ItemRarity.COMMON, price: 90, icon: 'item-recovery' },
   { name: 'Scroll Social Media 30m', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.COMMON, price: 50, icon: 'item-lifestyle' },
+  { name: 'Sleep In 30 Minutes', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.COMMON, price: 100, icon: 'item-lifestyle' },
+  { name: 'Skip Morning Chore', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.COMMON, price: 100, icon: 'item-lifestyle' },
+  { name: 'Listen to a Podcast Episode', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.COMMON, price: 60, icon: 'item-lifestyle' },
 
-  // Rares
+  // ── Rares (bigger treats, once-a-week feel) ──
   { name: 'Gaming 3 Hours', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.RARE, price: 300, icon: 'item-entertainment' },
   { name: 'Movie Night', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.RARE, price: 350, icon: 'item-entertainment' },
+  { name: 'Anime Marathon 3 Episodes', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.RARE, price: 320, icon: 'item-entertainment' },
+  { name: 'Go to the Cinema', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.RARE, price: 500, icon: 'item-entertainment' },
   { name: 'Fast Food Meal', category: ItemCategory.FOOD, rarity: ItemRarity.RARE, price: 400, icon: 'item-food' },
+  { name: 'Order Dessert Box', category: ItemCategory.FOOD, rarity: ItemRarity.RARE, price: 380, icon: 'item-food' },
+  { name: 'Eat Out at a Restaurant', category: ItemCategory.FOOD, rarity: ItemRarity.RARE, price: 600, icon: 'item-food' },
+  { name: 'Sleep In 1 Extra Hour', category: ItemCategory.RECOVERY, rarity: ItemRarity.RARE, price: 350, icon: 'item-recovery' },
+  { name: 'Half Rest Day (light training only)', category: ItemCategory.RECOVERY, rarity: ItemRarity.RARE, price: 450, icon: 'item-recovery' },
   { name: 'Buy Manga/Book', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.RARE, price: 500, icon: 'item-lifestyle' },
+  { name: 'New Phone Wallpaper Pack', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.RARE, price: 250, icon: 'item-lifestyle' },
+  { name: 'Buy a New Playlist / Album', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.RARE, price: 300, icon: 'item-lifestyle' },
+  { name: 'Skip a Chore for the Day', category: ItemCategory.LIFESTYLE, rarity: ItemRarity.RARE, price: 350, icon: 'item-lifestyle' },
 
-  // Epics
+  // ── Epics (weekend-tier, need real saving) ──
   { name: 'Gaming All Night', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.EPIC, price: 800, icon: 'item-entertainment' },
+  { name: 'Full Anime Season Binge', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.EPIC, price: 900, icon: 'item-entertainment' },
+  { name: 'Game Night with Friends', category: ItemCategory.ENTERTAINMENT, rarity: ItemRarity.EPIC, price: 850, icon: 'item-entertainment' },
   { name: 'Cheat Meal Day', category: ItemCategory.FOOD, rarity: ItemRarity.EPIC, price: 1000, icon: 'item-food' },
+  { name: 'Order Anything You Want', category: ItemCategory.FOOD, rarity: ItemRarity.EPIC, price: 1100, icon: 'item-food' },
+  { name: 'Full Rest Day', category: ItemCategory.RECOVERY, rarity: ItemRarity.EPIC, price: 950, icon: 'item-recovery', reqs: { requiredStreak: 5 } },
+  { name: 'Sleep as Long as You Want', category: ItemCategory.RECOVERY, rarity: ItemRarity.EPIC, price: 900, icon: 'item-recovery' },
   { name: 'Buy New Game', category: ItemCategory.PREMIUM, rarity: ItemRarity.EPIC, price: 1500, icon: 'item-premium' },
+  { name: 'New Clothing Item', category: ItemCategory.PREMIUM, rarity: ItemRarity.EPIC, price: 1600, icon: 'item-premium' },
+  { name: 'New Headphones/Accessory', category: ItemCategory.PREMIUM, rarity: ItemRarity.EPIC, price: 1800, icon: 'item-premium' },
 
-  // Legendaries
-  { name: 'Full Rest Day', category: ItemCategory.RECOVERY, rarity: ItemRarity.LEGENDARY, price: 2500, icon: 'item-recovery', reqs: { requiredStreak: 10 } },
+  // ── Legendaries (big goals, gated by streak/level) ──
+  { name: 'Full Rest Day (no guilt)', category: ItemCategory.RECOVERY, rarity: ItemRarity.LEGENDARY, price: 2500, icon: 'item-recovery', reqs: { requiredStreak: 10 } },
+  { name: 'Full Weekend Off', category: ItemCategory.RECOVERY, rarity: ItemRarity.LEGENDARY, price: 3200, icon: 'item-recovery', reqs: { requiredStreak: 14 } },
   { name: 'Buy Premium Item', category: ItemCategory.PREMIUM, rarity: ItemRarity.LEGENDARY, price: 5000, icon: 'item-premium', reqs: { minLevel: 10 } },
+  { name: 'Shopping Spree Day', category: ItemCategory.PREMIUM, rarity: ItemRarity.LEGENDARY, price: 6000, icon: 'item-premium', reqs: { minLevel: 15 } },
+  { name: 'Splurge on a Big Purchase', category: ItemCategory.PREMIUM, rarity: ItemRarity.LEGENDARY, price: 8000, icon: 'item-premium', reqs: { minLevel: 20, requiredStreak: 20 } },
 ];
 
 // Weapons — bought from the Exchange, chosen per-attack in the World Boss
@@ -146,10 +177,10 @@ async function run() {
   console.log('Populating the Exchange for this week...');
   const shuffle = (array: Item[]) => array.sort(() => 0.5 - Math.random());
     
-  const commons = shuffle(savedItems.filter(i => i.rarity === ItemRarity.COMMON)).slice(0, 5);
-  const rares = shuffle(savedItems.filter(i => i.rarity === ItemRarity.RARE)).slice(0, 3);
-  const epics = shuffle(savedItems.filter(i => i.rarity === ItemRarity.EPIC)).slice(0, 1);
-  const legendaries = shuffle(savedItems.filter(i => i.rarity === ItemRarity.LEGENDARY)).slice(0, 1);
+  const commons = shuffle(savedItems.filter(i => i.rarity === ItemRarity.COMMON)).slice(0, 8);
+  const rares = shuffle(savedItems.filter(i => i.rarity === ItemRarity.RARE)).slice(0, 6);
+  const epics = shuffle(savedItems.filter(i => i.rarity === ItemRarity.EPIC)).slice(0, 4);
+  const legendaries = shuffle(savedItems.filter(i => i.rarity === ItemRarity.LEGENDARY)).slice(0, 2);
 
   const newItems = [...commons, ...rares, ...epics, ...legendaries];
 

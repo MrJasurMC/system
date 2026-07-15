@@ -42,13 +42,13 @@ export class ExchangeCron {
 
     const shuffle = (array: Item[]) => array.sort(() => 0.5 - Math.random());
     
-    const commons = shuffle(availableItems.filter(i => i.rarity === ItemRarity.COMMON)).slice(0, 5);
-    const rares = shuffle(availableItems.filter(i => i.rarity === ItemRarity.RARE)).slice(0, 3);
-    const epics = shuffle(availableItems.filter(i => i.rarity === ItemRarity.EPIC)).slice(0, 1);
+    const commons = shuffle(availableItems.filter(i => i.rarity === ItemRarity.COMMON)).slice(0, 8);
+    const rares = shuffle(availableItems.filter(i => i.rarity === ItemRarity.RARE)).slice(0, 6);
+    const epics = shuffle(availableItems.filter(i => i.rarity === ItemRarity.EPIC)).slice(0, 4);
     
     // Legendary is rarer, maybe 50% chance to appear
     const legendaries = Math.random() > 0.5 
-      ? shuffle(availableItems.filter(i => i.rarity === ItemRarity.LEGENDARY)).slice(0, 1)
+      ? shuffle(availableItems.filter(i => i.rarity === ItemRarity.LEGENDARY)).slice(0, 2)
       : [];
 
     const newItems = [...commons, ...rares, ...epics, ...legendaries];
