@@ -190,8 +190,16 @@ export class QuestsService implements OnModuleInit {
     } catch (err) {
       this.logger.warn(`Daily quest self-heal failed for user ${userId}: ${err instanceof Error ? err.message : err}`);
     }
-    await this.dedupeActiveQuests(userId);
-    await this.removeOrphanedGeneratedQuests(userId);
+    try {
+      // Cleanup only — must never take down the read itself. A hiccup here
+      // (bad legacy row, transient DB error) used to propagate straight out
+      // of findMine() and 500 the Status + Quests pages on every single
+      // load until someone fixed the underlying row by hand.
+      await this.dedupeActiveQuests(userId);
+      await this.removeOrphanedGeneratedQuests(userId);
+    } catch (err) {
+      this.logger.warn(`Quest cleanup self-heal failed for user ${userId}: ${err instanceof Error ? err.message : err}`);
+    }
     const all = await this.questProgress.find({ where: { userId }, relations: ['quest'] });
     return all.filter((p) => p.quest && (p.quest.type === QuestType.MAIN_DAILY || p.quest.type === QuestType.SIDE));
   }
@@ -220,6 +228,14 @@ export class QuestsService implements OnModuleInit {
     const seenGoals = new Set<string>();
     const toRemove: QuestProgress[] = [];
     for (const entry of active) {
+      // Defensive: a quest_progress row whose quest was already deleted
+      // (dangling FK from a past bug, manual DB fix, etc.) used to crash
+      // this whole self-heal step on entry.quest.goal — take it out
+      // alongside real duplicates instead of throwing.
+      if (!entry.quest) {
+        toRemove.push(entry);
+        continue;
+      }
       const goal = entry.quest.goal;
       if (seenGoals.has(goal)) {
         toRemove.push(entry);
@@ -229,13 +245,13 @@ export class QuestsService implements OnModuleInit {
     }
     if (toRemove.length) {
       const orphanedQuestIds = toRemove
-        .filter((p) => p.quest.type === QuestType.MAIN_DAILY || p.quest.type === QuestType.SIDE)
+        .filter((p) => p.quest && (p.quest.type === QuestType.MAIN_DAILY || p.quest.type === QuestType.SIDE))
         .map((p) => p.quest.id);
       await this.questProgress.remove(toRemove);
       if (orphanedQuestIds.length) {
         await this.quests.delete(orphanedQuestIds);
       }
-      this.logger.log(`Removed ${toRemove.length} duplicate active quest(s) for user ${userId}`);
+      this.logger.log(`Removed ${toRemove.length} duplicate/dangling active quest(s) for user ${userId}`);
     }
   }
 
@@ -253,22 +269,23 @@ export class QuestsService implements OnModuleInit {
     // concurrent sweep can delete a quest out from under its own
     // still-running acceptQuest() call.
     const graceCutoff = new Date(Date.now() - 10_000);
-    const candidates = await this.quests
+    // Done as a single LEFT JOIN instead of "load every MAIN_DAILY/SIDE
+    // quest system-wide, then query quest_progress with an OR-per-row IN
+    // list" — that list only ever grows as the app accumulates quests
+    // across every user, and was a real risk of an oversized/slow query
+    // (or an outright crash) once there was enough history to sweep.
+    const orphans = await this.quests
       .createQueryBuilder('quest')
+      .leftJoin('quest_progress', 'progress', 'progress."questId" = quest.id')
       .where('quest.type IN (:...types)', { types: [QuestType.MAIN_DAILY, QuestType.SIDE] })
       .andWhere('quest.createdAt < :graceCutoff', { graceCutoff })
-      .getMany();
-    if (!candidates.length) return;
+      .andWhere('progress.id IS NULL')
+      .select('quest.id', 'id')
+      .getRawMany<{ id: string }>();
+    if (!orphans.length) return;
 
-    const linked = await this.questProgress.find({
-      where: candidates.map((q) => ({ questId: q.id })),
-    });
-    const linkedIds = new Set(linked.map((p) => p.questId));
-    const orphanIds = candidates.filter((q) => !linkedIds.has(q.id)).map((q) => q.id);
-    if (orphanIds.length) {
-      await this.quests.delete(orphanIds);
-      this.logger.log(`Removed ${orphanIds.length} orphaned generated quest(s) while serving user ${userId}`);
-    }
+    await this.quests.delete(orphans.map((o) => o.id));
+    this.logger.log(`Removed ${orphans.length} orphaned generated quest(s) while serving user ${userId}`);
   }
 
   /**

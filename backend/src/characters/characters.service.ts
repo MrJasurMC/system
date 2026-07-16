@@ -58,6 +58,16 @@ export class CharactersService {
 
   /** Sets the region/timezone used to compute the 5:00 AM daily quest reset. */
   async setTimezone(userId: string, timezone: string): Promise<Character> {
+    // Must be a real IANA zone — nextLocalResetTime() (quest reset scheduling)
+    // feeds this straight into Intl.DateTimeFormat, which throws a RangeError
+    // on anything invalid. That throw used to happen later, deep inside the
+    // quest self-heal on GET /quests/mine, turning a bad Settings value into
+    // a 500 on every single page load instead of a clean 400 here.
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+    } catch {
+      throw new BadRequestException(`"${timezone}" is not a valid IANA timezone (e.g. "Asia/Tashkent").`);
+    }
     const character = await this.getByUserId(userId);
     character.timezone = timezone;
     return this.saveCharacter(character);

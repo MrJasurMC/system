@@ -68,6 +68,7 @@ export class QuestGeneratorService {
     const MAX_DAILY_PENALTIES = 2; // §8 — cap stacking so a bad day can't cascade into a debuff spiral
 
     for (const entry of expiredQuests) {
+      if (!entry.quest) continue; // dangling row — nothing to evaluate, skip instead of crashing
       if (entry.quest.expiresAt && entry.quest.expiresAt < new Date()) {
         entry.status = QuestStatus.FAILED;
         await this.questProgress.save(entry);
@@ -417,7 +418,7 @@ export class QuestGeneratorService {
       where: [{ userId, status: QuestStatus.ACCEPTED }, { userId, status: QuestStatus.IN_PROGRESS }],
       relations: ['quest'],
     });
-    if (activeSide.some((p) => p.quest.type === QuestType.SIDE)) return;
+    if (activeSide.some((p) => p.quest?.type === QuestType.SIDE)) return;
 
     const totalClaimed = await this.questProgress.count({
       where: { userId, status: QuestStatus.CLAIMED },
@@ -476,7 +477,7 @@ export class QuestGeneratorService {
       relations: ['quest'],
     });
 
-    const hasActiveDaily = activeDailies.some(p => p.quest.type === QuestType.MAIN_DAILY);
+    const hasActiveDaily = activeDailies.some(p => p.quest?.type === QuestType.MAIN_DAILY);
     if (hasActiveDaily) {
       return; // Already has an active daily quest
     }
