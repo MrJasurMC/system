@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { QuestProgress } from './quest-progress.entity';
 
 export enum QuestType {
@@ -41,6 +41,15 @@ export enum QuestRarity {
 export class Quest {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  /**
+   * Used by removeOrphanedGeneratedQuests() to leave freshly-inserted quest
+   * rows alone for a short grace window, so a concurrent request from
+   * another user's generation cycle can't delete a quest that's still
+   * mid-insert (quest row committed, its QuestProgress row not yet).
+   */
+  @CreateDateColumn()
+  createdAt: Date;
 
   @Column()
   title: string;

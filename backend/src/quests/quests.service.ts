@@ -150,8 +150,22 @@ export class QuestsService implements OnModuleInit {
     }
   }
 
-  /** Active quests visible to a specific user — active + not-hidden-or-revealed (§3). */
+  /**
+   * Active quests visible to a specific user — active + not-hidden-or-revealed (§3).
+   *
+   * Runs the same dedupe/orphan sweep findMine() does before reading the
+   * catalog. Previously only findMine() self-healed, so the Quests page's
+   * "Available Contracts" list (served from here) could still render a
+   * stale duplicate/orphaned card until someone happened to hit
+   * GET /quests/mine first and clean it up.
+   */
   async findVisibleFor(userId: string): Promise<Quest[]> {
+    try {
+      await this.dedupeActiveQuests(userId);
+      await this.removeOrphanedGeneratedQuests(userId);
+    } catch (err) {
+      this.logger.warn(`Available-contracts self-heal failed for user ${userId}: ${err instanceof Error ? err.message : err}`);
+    }
     const all = await this.findAllActive();
     const flags = await Promise.all(all.map((q) => this.isRevealed(userId, q)));
     return all.filter((_, i) => flags[i]);
@@ -197,7 +211,7 @@ export class QuestsService implements OnModuleInit {
    * phantom duplicate "Accept Quest" card. Delete the quest row too, not
    * just the progress row.
    */
-  private async dedupeActiveQuests(userId: string): Promise<void> {
+  async dedupeActiveQuests(userId: string): Promise<void> {
     const active = await this.questProgress.find({
       where: [{ userId, status: QuestStatus.ACCEPTED }, { userId, status: QuestStatus.IN_PROGRESS }],
       relations: ['quest'],
@@ -232,10 +246,17 @@ export class QuestsService implements OnModuleInit {
    * never going to be accepted by anyone, it's just clutter that keeps
    * showing up as a duplicate "available" card until its expiry lapses.
    */
-  private async removeOrphanedGeneratedQuests(userId: string): Promise<void> {
+  async removeOrphanedGeneratedQuests(userId: string): Promise<void> {
+    // Skip anything inserted in the last 10s — it may be a quest another
+    // user's in-flight generateDailyQuest() just created, whose
+    // QuestProgress row hasn't committed yet. Without this window a
+    // concurrent sweep can delete a quest out from under its own
+    // still-running acceptQuest() call.
+    const graceCutoff = new Date(Date.now() - 10_000);
     const candidates = await this.quests
       .createQueryBuilder('quest')
       .where('quest.type IN (:...types)', { types: [QuestType.MAIN_DAILY, QuestType.SIDE] })
+      .andWhere('quest.createdAt < :graceCutoff', { graceCutoff })
       .getMany();
     if (!candidates.length) return;
 
