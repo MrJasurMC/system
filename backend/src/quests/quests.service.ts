@@ -193,7 +193,7 @@ export class QuestsService implements OnModuleInit {
     await this.dedupeActiveQuests(userId);
     await this.removeOrphanedGeneratedQuests(userId);
     const all = await this.questProgress.find({ where: { userId }, relations: ['quest'] });
-    return all.filter((p) => p.quest.type === QuestType.MAIN_DAILY || p.quest.type === QuestType.SIDE);
+    return all.filter((p) => p.quest && (p.quest.type === QuestType.MAIN_DAILY || p.quest.type === QuestType.SIDE));
   }
 
   /**
