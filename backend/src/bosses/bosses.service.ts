@@ -34,10 +34,18 @@ export class BossesService implements OnModuleInit {
    * Sunday. This spawns one immediately if none is currently active.
    */
   async onModuleInit() {
-    const active = await this.bosses.findOne({ where: { isActive: true } });
-    if (!active && this.isWithinBossWindow(new Date())) {
-      this.logger.log('Within weekend boss window with no active World Boss on startup — spawning one now.');
-      await this.spawnWeeklyBoss();
+    // Was a bare, unguarded query — any DB hiccup here (including the schema
+    // simply not being migrated yet) crashed the ENTIRE app at boot before
+    // it ever got to app.listen(), taking down every other feature with it.
+    // Mirrors the defensive pattern QuestsService.onModuleInit already uses.
+    try {
+      const active = await this.bosses.findOne({ where: { isActive: true } });
+      if (!active && this.isWithinBossWindow(new Date())) {
+        this.logger.log('Within weekend boss window with no active World Boss on startup — spawning one now.');
+        await this.spawnWeeklyBoss();
+      }
+    } catch (err) {
+      this.logger.warn(`World Boss startup check failed (non-fatal): ${err instanceof Error ? err.message : err}`);
     }
   }
 

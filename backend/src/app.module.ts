@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { join } from 'path';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -53,6 +54,18 @@ import { ChroniclesModule } from '@/chronicles/chronicles.module';
           database: config.get<string>('DB_NAME') ?? 'project_limitless',
           ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
           entities,
+          // __dirname-relative so this resolves correctly whether we're
+          // running via ts-node (src/database/migrations/*.ts in dev) or the
+          // compiled build (dist/src/database/migrations/*.js in prod).
+          migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
+          // Nothing ever ran migrations against a real deployed DB before —
+          // synchronize is (correctly) off in production, and the Docker
+          // image's CMD never called migration:run, so a fresh production
+          // Postgres just never got its schema and every DB-touching route
+          // 500'd with "relation ... does not exist" forever. This applies
+          // any pending migration on every boot; TypeORM tracks what's
+          // already applied so re-running on an up-to-date DB is a no-op.
+          migrationsRun: true,
           synchronize: config.get('NODE_ENV') !== 'production',
           autoLoadEntities: true,
         };
