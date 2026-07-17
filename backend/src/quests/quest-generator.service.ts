@@ -223,6 +223,7 @@ export class QuestGeneratorService {
             'Regular Push Ups — 2 sets, max reps burnout',
             `Leg Raises (lying flat) — 3 sets x ${Math.min(15 + Math.floor(programWeek / 2), 30)} reps`,
             'Plank Hold — 3 rounds, max time each',
+            'Side Plank — 3 sets x 30 sec per side (obliques)',
           ],
           attributeReward: { strength: 2, endurance: 2 },
         };
@@ -340,6 +341,8 @@ export class QuestGeneratorService {
       lines: [
         'Pull Ups — max effort set, record the number (you\'re at 10 — target: 20 by month 6)',
         'L-Sit Progressions — tuck hold, 4 rounds (target: full L-sit 10 sec by month 9)',
+        'Floor Prone Angel — 3 rounds, max time (front-lever prep: lie face down, lift straight arms/chest off floor)',
+        'Elbow Lever — 3 attempts, max hold (balance on forearms, body straight, feet off ground)',
         'Weighted Backpack Pull Ups — once bodyweight pull ups exceed 15 clean reps, add books to a backpack',
       ],
       attributeReward: { strength: 3 },
@@ -445,6 +448,7 @@ export class QuestGeneratorService {
           ...exerciseLines.map((l) => `- ${l}`),
           `- Drink ${waterLiters}L of water today`,
           `- Eat around ${calories} kcal today (weight-gain target)`,
+          '- Hunter Shake (~600 kcal, blend and drink): 50g oats + 300ml milk + 2 tbsp peanut butter + 1 banana',
         ].join('\n'),
         type: QuestType.SIDE,
         difficulty: QuestDifficulty.NORMAL,
