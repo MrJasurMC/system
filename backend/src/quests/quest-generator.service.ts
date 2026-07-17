@@ -260,6 +260,8 @@ export class QuestGeneratorService {
             'No training today — 100% focus on eating',
             'Extra meat, rice, and your Hunter Shake to prep for tomorrow\'s Leg Day',
             'Hit your calorie target from the Monarch\'s Fuel daily quest',
+            'Neck Training (light, doesn\'t affect recovery) — Manual Resistance: press head into hand, 4 directions x 15 sec hold each',
+            'Neck Bridges — 3 sets x 20 sec (slow and controlled, stop immediately if sharp/nerve pain)',
           ],
           attributeReward: { endurance: 1 },
         };
