@@ -408,6 +408,13 @@ export class QuestGeneratorService {
     return { calories, waterLiters };
   }
 
+  /** Mirrors the rest days in buildFullBodyQuest's switch (Mon/Wed/Fri) — the
+   * Side quest checks this too so it never tells the player to do a training
+   * circuit on the same day the Main quest says "no training today." */
+  private isRestDay(dayOfWeek: number): boolean {
+    return dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5;
+  }
+
   async generateSideQuest(userId: string) {
     const character = await this.characters.getByUserId(userId);
     if (character.nextSideQuestAt && character.nextSideQuestAt.getTime() > Date.now()) {
@@ -426,12 +433,16 @@ export class QuestGeneratorService {
     const template = this.SIDE_QUEST_POOL[totalClaimed % this.SIDE_QUEST_POOL.length];
     const expiresAt = nextLocalResetTime(character.timezone);
     const { calories, waterLiters } = this.nutritionTargets(character.weightKg, character.ageYears);
+    const isRest = this.isRestDay(new Date().getDay());
+    const exerciseLines = isRest
+      ? [`Rest day — no extra training today (see Main quest). ${template.title} picks back up on your next training day.`]
+      : template.lines;
 
     const quest = await this.quests.save(
       this.quests.create({
         title: template.title,
         description: [
-          ...template.lines.map((l) => `- ${l}`),
+          ...exerciseLines.map((l) => `- ${l}`),
           `- Drink ${waterLiters}L of water today`,
           `- Eat around ${calories} kcal today (weight-gain target)`,
         ].join('\n'),
