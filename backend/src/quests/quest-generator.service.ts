@@ -225,20 +225,8 @@ export class QuestGeneratorService {
           ],
           attributeReward: { strength: 2, endurance: 2 },
         };
-      case 6: // Saturday — World Boss window is active all weekend (see bosses.service.ts),
-      case 0: // Sunday — so the Main quest no longer hands out a separate fixed-rep workout
-              // here. It just points the player at the boss fight, where reps are logged
-              // freely via submitDamage with no set/rep cap.
-        return {
-          title: 'Defeat the World Boss',
-          dayType: 'boss',
-          lines: [
-            'The World Boss is active — go to World Boss and attack it.',
-            'Every rep you log there deals real damage — no set/rep cap, do as much as you want.',
-            'Check this off once you\'ve landed at least one hit on the boss today.',
-          ],
-          attributeReward: { strength: 2, endurance: 2, agility: 1 },
-        };
+      // Sat/Sun (boss weekend) never reach this function anymore —
+      // generateDailyQuestInner returns before calling it on those days.
       case 5: // Friday — Rest & Bulk (calorie loading, explicit no-training day before the boss weekend)
         return {
           title: 'Rest & Bulk — Calorie Loading',
@@ -457,6 +445,12 @@ export class QuestGeneratorService {
     return this.withGenerationLock(userId, () => this.generateDailyQuestInner(userId));
   }
 
+  /** Boss weekend — Sat (6) and Sun (0). Kept as its own helper since it's now
+   * checked before generation even starts, not just inside buildFullBodyQuest. */
+  private isBossDay(dayOfWeek: number): boolean {
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  }
+
   private async generateDailyQuestInner(userId: string) {
     // Side quest generates independently of the Main workout quest below —
     // it used to sit after the early-return, so on any day you still had an
@@ -464,6 +458,30 @@ export class QuestGeneratorService {
     await this.generateSideQuest(userId);
 
     const character = await this.characters.getByUserId(userId);
+    const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
+
+    // Boss weekend — no prescribed Main quest at all. Workouts that day are
+    // logged freely against the World Boss itself (bosses.service.ts), not
+    // through a fixed-task quest card. If a Main quest is still sitting
+    // active from before this went into effect (or from Friday, since it
+    // doesn't expire until 5am the day after it was generated), retire it
+    // now instead of leaving a stale card on screen.
+    if (this.isBossDay(dayOfWeek)) {
+      const staleMainDaily = await this.questProgress.find({
+        where: [
+          { userId, status: QuestStatus.ACCEPTED },
+          { userId, status: QuestStatus.IN_PROGRESS },
+        ],
+        relations: ['quest'],
+      });
+      const toRetire = staleMainDaily.filter((p) => p.quest?.type === QuestType.MAIN_DAILY);
+      if (toRetire.length) {
+        await this.questProgress.remove(toRetire);
+        await this.quests.delete(toRetire.map((p) => p.quest.id));
+        this.logger.log(`Retired ${toRetire.length} stale Main quest(s) for user ${userId} entering boss weekend.`);
+      }
+      return;
+    }
 
     // Not due yet — Main quest resets at the next local 5:00 AM, not on
     // every page load. This is what actually shows "Next quest: tomorrow
@@ -493,7 +511,6 @@ export class QuestGeneratorService {
     // Drives the weekly rep-target progression in buildFullBodyQuest.
     const daysSinceStart = Math.floor((Date.now() - character.createdAt.getTime()) / (24 * 60 * 60 * 1000));
     const programWeek = Math.min(Math.floor(daysSinceStart / 7), 52); // year-long program
-    const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
     const { lines, attributeReward, title: dayTitle, dayType } = this.buildFullBodyQuest(programWeek, dayOfWeek);
 
     const rarity = rollRarity(streak);
