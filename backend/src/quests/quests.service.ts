@@ -208,7 +208,19 @@ export class QuestsService implements OnModuleInit {
    * One-time cleanup for accounts that already accumulated duplicate active
    * quests (e.g. two "Daily Discipline" cards) from the self-heal race that
    * generateDailyQuest's new per-user lock now prevents going forward. Keeps
-   * the oldest of each duplicate goal, removes the rest.
+   * the oldest duplicate of each kind, removes the rest.
+   *
+   * Key is quest TYPE for MAIN_DAILY/SIDE, not literal goal text. Goal text
+   * used to be the key, which worked for MAIN_DAILY (always the same fixed
+   * goal string) but silently missed Side quest duplicates: the Side pool
+   * rotates through 9 templates, each with its own goal line ("Widen the
+   * back..." vs "Lowest priority by design..."), so two Side quests from
+   * two different templates never matched on goal text and both stayed
+   * active forever — exactly the "Visible Abs" + "Massive V-Taper" both
+   * showing at once bug. Only one MAIN_DAILY and one SIDE should ever be
+   * active per user regardless of which template generated them; every
+   * other quest type keeps the old goal-text key since those (chains,
+   * story, etc.) are legitimately allowed to coexist.
    *
    * This used to only delete the duplicate `quest_progress` rows and leave
    * the underlying `quests` row behind. MAIN_DAILY/SIDE quests are 1:1 with
@@ -225,7 +237,7 @@ export class QuestsService implements OnModuleInit {
       relations: ['quest'],
       order: { createdAt: 'ASC' },
     });
-    const seenGoals = new Set<string>();
+    const seenKeys = new Set<string>();
     const toRemove: QuestProgress[] = [];
     for (const entry of active) {
       // Defensive: a quest_progress row whose quest was already deleted
@@ -236,11 +248,14 @@ export class QuestsService implements OnModuleInit {
         toRemove.push(entry);
         continue;
       }
-      const goal = entry.quest.goal;
-      if (seenGoals.has(goal)) {
+      const key =
+        entry.quest.type === QuestType.MAIN_DAILY || entry.quest.type === QuestType.SIDE
+          ? entry.quest.type // one active MAIN_DAILY / one active SIDE, regardless of template
+          : `${entry.quest.type}:${entry.quest.goal}`;
+      if (seenKeys.has(key)) {
         toRemove.push(entry);
       } else {
-        seenGoals.add(goal);
+        seenKeys.add(key);
       }
     }
     if (toRemove.length) {
