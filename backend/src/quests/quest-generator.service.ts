@@ -194,10 +194,8 @@ export class QuestGeneratorService {
     const loadKg = phase === 1 ? 0 : Math.min(2 + (programWeek - 8) * 1, 20);
     const pullLoadNote = phase >= 2 && pullUps >= 15 ? ` (+${loadKg}kg backpack once 15 clean bodyweight reps)` : '';
     const dipPushLoadNote = phase >= 2 && pushUps >= 80 ? ` (+${loadKg}kg backpack once ${round5(pushUps * 0.6)} clean reps)` : '';
-    const squatLoadNote = phase >= 2 ? ` (+${loadKg}kg backpack/bag, tempo: 3sec down, 1sec pause, explode up)` : ' (tempo: 3sec down, 1sec pause, explode up)';
 
     const speedBlockPull = phase >= 2 ? ['Broad Jumps — 3x5 (land soft, reset each rep)'] : [];
-    const speedBlockLeg = phase >= 2 ? ['Jump Squats — 3x10 (explosive, land soft)', 'Sprint Intervals — 6x20m, walk back recovery'] : [];
 
     switch (dayOfWeek) {
       case 2: // Tuesday — Pull Day
@@ -227,38 +225,27 @@ export class QuestGeneratorService {
           ],
           attributeReward: { strength: 2, endurance: 2 },
         };
-      case 6: // Saturday — Leg Day
+      case 6: // Saturday — World Boss window is active all weekend (see bosses.service.ts),
+      case 0: // Sunday — so the Main quest no longer hands out a separate fixed-rep workout
+              // here. It just points the player at the boss fight, where reps are logged
+              // freely via submitDamage with no set/rep cap.
         return {
-          title: `Leg Day — Monster Legs (Phase ${phase})`,
-          dayType: 'training',
-          lines: [
-            `Tempo Squats — 3 sets x ${Math.min(12 + Math.floor(programWeek / 2), 25)} reps${squatLoadNote}`,
-            `Bulgarian Split Squats — 3 sets x ${Math.min(10 + Math.floor(programWeek / 2), 20)} reps per leg, slow`,
-            `Calf Raises — 4 sets x ${Math.min(20 + Math.floor(programWeek / 2), 35)} reps, 2 sec hold at top`,
-            ...speedBlockLeg,
-          ],
-          attributeReward: { strength: 2, speed: phase >= 2 ? 2 : 1 },
-        };
-      case 0: // Sunday — Boss Day
-        return {
-          title: `BOSS DAY — Full Body Trial (Phase ${phase})`,
+          title: 'Defeat the World Boss',
           dayType: 'boss',
           lines: [
-            `Decline Push-ups (feet elevated) — 3 sets x ${round5(pushUps * 0.2)} reps`,
-            `Towel Pull-ups — 3 sets x ${round5(pullUps * 0.25)} reps`,
-            `Bulgarian Split Squats — 3 sets x 12 reps per leg`,
-            'Plank Hold — 2 sets, max time',
-            `Pull Ups — max effort set, record it (target: ${pullUps})`,
+            'The World Boss is active — go to World Boss and attack it.',
+            'Every rep you log there deals real damage — no set/rep cap, do as much as you want.',
+            'Check this off once you\'ve landed at least one hit on the boss today.',
           ],
-          attributeReward: { strength: 3, endurance: 2, agility: 1 },
+          attributeReward: { strength: 2, endurance: 2, agility: 1 },
         };
-      case 5: // Friday — Rest & Bulk (calorie loading, explicit no-training day before leg day)
+      case 5: // Friday — Rest & Bulk (calorie loading, explicit no-training day before the boss weekend)
         return {
           title: 'Rest & Bulk — Calorie Loading',
           dayType: 'rest',
           lines: [
             'No training today — 100% focus on eating',
-            'Extra meat, rice, and your Hunter Shake to prep for tomorrow\'s Leg Day',
+            'Extra meat, rice, and your Hunter Shake to prep for the World Boss weekend',
             'Hit your calorie target from the Monarch\'s Fuel daily quest',
             'Neck Training (light, doesn\'t affect recovery) — Manual Resistance: press head into hand, 4 directions x 15 sec hold each',
             'Neck Bridges — 3 sets x 20 sec (slow and controlled, stop immediately if sharp/nerve pain)',
