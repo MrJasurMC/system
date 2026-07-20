@@ -130,6 +130,10 @@ export class Character {
   @Column({ type: 'timestamp', nullable: true })
   nextSideQuestAt: Date | null;
 
+  /** Same idea as nextMainQuestAt, but for the Voice Training quest. */
+  @Column({ type: 'timestamp', nullable: true })
+  nextVoiceQuestAt: Date | null;
+
   /** Bodyweight in kg — drives the Side quest's daily water/calorie targets. Set via Nutrition. */
   @Column({ type: 'float', nullable: true })
   weightKg: number | null;

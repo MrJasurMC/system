@@ -16,6 +16,7 @@ export enum QuestType {
   PROMOTION_EXAM = 'promotion_exam',
   SEASONAL = 'seasonal',
   CHAIN = 'chain',
+  VOICE_TRAINING = 'voice_training',
 }
 
 export enum QuestDifficulty {

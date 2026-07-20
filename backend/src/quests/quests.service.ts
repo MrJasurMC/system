@@ -721,6 +721,8 @@ export class QuestsService implements OnModuleInit {
       character.nextMainQuestAt = nextLocalResetTime(character.timezone);
     } else if (quest.type === QuestType.SIDE) {
       character.nextSideQuestAt = nextLocalResetTime(character.timezone);
+    } else if (quest.type === QuestType.VOICE_TRAINING) {
+      character.nextVoiceQuestAt = nextLocalResetTime(character.timezone);
     }
     await this.characters.saveCharacter(character);
 

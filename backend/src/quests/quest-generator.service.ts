@@ -360,6 +360,115 @@ export class QuestGeneratorService {
   ];
 
   /**
+   * Voice training routine — cycles through 4 drills across the week,
+   * paired Mon/Thu, Tue/Fri, Wed/Sat, with Sunday as a rest day for the
+   * vocal cords. Keyed by JS getDay() (0=Sun ... 6=Sat).
+   */
+  private readonly VOICE_TRAINING_ROUTINE: Record<number, { title: string; goal: string; lines: string[] } | null> = {
+    1: {
+      title: 'Diaphragmatic Breathing',
+      goal: 'Belly breathing — the foundation for vocal control and a deeper, steadier voice',
+      lines: [
+        'Place one hand on your chest, the other on your belly',
+        'Inhale deeply through your nose — your belly should rise, not your chest',
+        'Hold the breath for 3 seconds, then exhale slowly through your mouth',
+        'Duration: 5 minutes',
+      ],
+    },
+    4: {
+      title: 'Diaphragmatic Breathing',
+      goal: 'Belly breathing — the foundation for vocal control and a deeper, steadier voice',
+      lines: [
+        'Place one hand on your chest, the other on your belly',
+        'Inhale deeply through your nose — your belly should rise, not your chest',
+        'Hold the breath for 3 seconds, then exhale slowly through your mouth',
+        'Duration: 5 minutes',
+      ],
+    },
+    2: {
+      title: 'Building Resonance (Humming)',
+      goal: 'Develop chest resonance — the low hum that makes a voice carry weight',
+      lines: [
+        "Close your lips, but don't clench your teeth (keep the mouth cavity relaxed inside)",
+        'Take a deep breath and hum "Mmmmmm" calmly in a low tone',
+        'Try to feel the vibration in your chest',
+        'Duration: 5 minutes',
+      ],
+    },
+    5: {
+      title: 'Building Resonance (Humming)',
+      goal: 'Develop chest resonance — the low hum that makes a voice carry weight',
+      lines: [
+        "Close your lips, but don't clench your teeth (keep the mouth cavity relaxed inside)",
+        'Take a deep breath and hum "Mmmmmm" calmly in a low tone',
+        'Try to feel the vibration in your chest',
+        'Duration: 5 minutes',
+      ],
+    },
+    3: {
+      title: 'Controlling Vocal Tone',
+      goal: 'Slow, deliberate reading to train pitch control and a deeper sentence-ending tone',
+      lines: [
+        'Pick any text or book',
+        'Read it twice as slow as usual, without rushing',
+        'Deliberately lower your pitch slightly on the last word of each sentence',
+        'Duration: 5 minutes',
+      ],
+    },
+    6: {
+      title: 'Controlling Vocal Tone',
+      goal: 'Slow, deliberate reading to train pitch control and a deeper sentence-ending tone',
+      lines: [
+        'Pick any text or book',
+        'Read it twice as slow as usual, without rushing',
+        'Deliberately lower your pitch slightly on the last word of each sentence',
+        'Duration: 5 minutes',
+      ],
+    },
+    0: null, // Sunday — rest day, no quest generated
+  };
+
+  async generateVoiceTrainingQuest(userId: string) {
+    const character = await this.characters.getByUserId(userId);
+    if (character.nextVoiceQuestAt && character.nextVoiceQuestAt.getTime() > Date.now()) {
+      return; // Not due yet — resets at the next local 5:00 AM.
+    }
+
+    const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
+    const template = this.VOICE_TRAINING_ROUTINE[dayOfWeek];
+    if (!template) {
+      // Sunday — rest the vocal cords, no quest today. Push the next check
+      // to tomorrow's reset so we don't re-query every generation cycle.
+      character.nextVoiceQuestAt = nextLocalResetTime(character.timezone);
+      await this.characters.saveCharacter(character);
+      return;
+    }
+
+    const activeVoice = await this.questProgress.find({
+      where: [{ userId, status: QuestStatus.ACCEPTED }, { userId, status: QuestStatus.IN_PROGRESS }],
+      relations: ['quest'],
+    });
+    if (activeVoice.some((p) => p.quest?.type === QuestType.VOICE_TRAINING)) return;
+
+    const expiresAt = nextLocalResetTime(character.timezone);
+    const quest = await this.quests.save(
+      this.quests.create({
+        title: template.title,
+        description: template.lines.map((l) => `- ${l}`).join('\n'),
+        type: QuestType.VOICE_TRAINING,
+        difficulty: QuestDifficulty.EASY,
+        estimatedTime: 5,
+        goal: template.goal,
+        goalValue: 1,
+        xpReward: 80 + character.level * 3,
+        goldReward: 30 + character.level,
+        expiresAt,
+      }),
+    );
+    await this.acceptQuest(userId, quest.id);
+  }
+
+  /**
    * Simple beginner bulking guidance, scaled off bodyweight and age — not a
    * clinical/medical plan. weightKg defaults to 40 / ageYears defaults to 20
    * (their current weight per the program brief) if never set via Nutrition.
@@ -456,6 +565,10 @@ export class QuestGeneratorService {
     // it used to sit after the early-return, so on any day you still had an
     // active workout quest, the side quest silently never regenerated.
     await this.generateSideQuest(userId);
+    // Voice Training runs on its own weekly schedule (Mon-Sat drills, Sun
+    // rest) independent of the Main/Side quests — same "generate
+    // independently" reasoning as the Side quest above.
+    await this.generateVoiceTrainingQuest(userId);
 
     const character = await this.characters.getByUserId(userId);
     const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
