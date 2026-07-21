@@ -46,7 +46,7 @@ export const typeOrmDataSourceOptions: DataSourceOptions = {
   database: process.env.DB_NAME ?? 'project_limitless',
   ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   entities,
-  migrations: [join(__dirname, 'database/migrations/*{.ts,.js}')],
+  migrations: [join(__dirname, '../database/migrations/*{.ts,.js}')],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
 };
