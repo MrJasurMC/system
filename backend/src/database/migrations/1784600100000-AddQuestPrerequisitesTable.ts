@@ -10,6 +10,17 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * /api/quests/:id/accept 500s with "relation quest_prerequisites does not
  * exist" (Postgres 42P01) for every quest that has never been attempted
  * before, since that's exactly when unmetPrerequisites() runs.
+ *
+ * NOTE: an earlier version of this migration also added FK constraints on
+ * questId/requiredQuestId -> quests(id). On the actual production DB those
+ * failed at boot with "foreign key constraint ... cannot be implemented"
+ * (Postgres 42804) and put the app in an infinite migration-retry crash
+ * loop, blocking every deploy entirely. QuestPrerequisite has no
+ * @ManyToOne/@JoinColumn on the entity — it's referenced at the app level
+ * only (plain @Column uuids), so a physical FK was never actually required
+ * for the app to work. Table + indexes are sufficient; FKs dropped so this
+ * can't wedge the boot sequence again regardless of whatever schema-level
+ * mismatch caused it.
  */
 export class AddQuestPrerequisitesTable1784600100000 implements MigrationInterface {
   name = 'AddQuestPrerequisitesTable1784600100000';
@@ -31,16 +42,6 @@ export class AddQuestPrerequisitesTable1784600100000 implements MigrationInterfa
     await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS "IDX_quest_prerequisites_questId_requiredQuestId"
       ON "quest_prerequisites" ("questId", "requiredQuestId")
-    `);
-    await queryRunner.query(`
-      ALTER TABLE "quest_prerequisites"
-      ADD CONSTRAINT "FK_quest_prerequisites_questId"
-      FOREIGN KEY ("questId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE NO ACTION
-    `);
-    await queryRunner.query(`
-      ALTER TABLE "quest_prerequisites"
-      ADD CONSTRAINT "FK_quest_prerequisites_requiredQuestId"
-      FOREIGN KEY ("requiredQuestId") REFERENCES "quests"("id") ON DELETE CASCADE ON UPDATE NO ACTION
     `);
   }
 
