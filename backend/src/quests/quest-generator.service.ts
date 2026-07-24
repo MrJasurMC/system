@@ -564,11 +564,31 @@ export class QuestGeneratorService {
     // Side quest generates independently of the Main workout quest below —
     // it used to sit after the early-return, so on any day you still had an
     // active workout quest, the side quest silently never regenerated.
-    await this.generateSideQuest(userId);
+    //
+    // Both this call and the Voice Training call below are wrapped in their
+    // own try/catch now. They used to be plain sequential awaits sharing the
+    // single try/catch in findMine() — which meant an exception thrown while
+    // generating the Side or Voice quest (bad character data, a transient DB
+    // hiccup, etc.) unwound straight out of this function and skipped the
+    // Main quest block entirely, even though Main had nothing to do with
+    // whatever failed. That's exactly how a player could end up with a Side
+    // quest card on screen and no Main quest card at all, forever, since
+    // nextMainQuestAt was never touched either — every future call from
+    // findMine() kept trying, and kept getting knocked out by the same
+    // upstream failure before it ever reached the Main logic below.
+    try {
+      await this.generateSideQuest(userId);
+    } catch (err) {
+      this.logger.warn(`Side quest generation failed for user ${userId}: ${err instanceof Error ? err.message : err}`);
+    }
     // Voice Training runs on its own weekly schedule (Mon-Sat drills, Sun
     // rest) independent of the Main/Side quests — same "generate
     // independently" reasoning as the Side quest above.
-    await this.generateVoiceTrainingQuest(userId);
+    try {
+      await this.generateVoiceTrainingQuest(userId);
+    } catch (err) {
+      this.logger.warn(`Voice training quest generation failed for user ${userId}: ${err instanceof Error ? err.message : err}`);
+    }
 
     const character = await this.characters.getByUserId(userId);
     const dayOfWeek = localDayOfWeek(character.timezone); // 0=Sun ... 6=Sat, in the player's own timezone

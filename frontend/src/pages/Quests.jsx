@@ -399,8 +399,13 @@ export function Quests() {
           {punishment.map(e => <QuestCard key={e.id} entry={e} />)}
         </div>}
 
-      {/* ── Main Quest ── */}
-      {(daily.length > 0 || nextMain) && <div style={{
+      {/* ── Main Quest ──
+          Always rendered (unlike Side/Voice below) even when there's no
+          active card and no known "next at" time. A Main quest missing for
+          both those reasons at once means generation is stuck server-side,
+          not that the player has nothing to do today — that case should
+          never look identical to "everything's fine, nothing scheduled". */}
+      <div style={{
       marginBottom: 24
     }}>
           <div style={{
@@ -422,7 +427,14 @@ export function Quests() {
           color: 'var(--text)'
         }}>{nextMain}</b>
             </div>}
-        </div>}
+          {daily.length === 0 && !nextMain && <div className="system-window" style={{
+        fontFamily: 'var(--font-mono)',
+        fontSize: 12,
+        color: 'var(--text-dim)'
+      }}>
+              No Main Quest active. Reload the page — the System generates today's quest on load. If it still doesn't appear, something's stuck server-side.
+            </div>}
+        </div>
 
       {/* ── Side Quest ── */}
       {(side.length > 0 || nextSide) && <div style={{

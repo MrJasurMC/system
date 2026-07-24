@@ -185,20 +185,19 @@ export class QuestsService implements OnModuleInit {
       // showing as the live "Active Mission" everywhere) until the next
       // cron run. Self-healing here means it flips to FAILED the moment
       // anyone loads a page after expiry, not up to 24h later.
+      // Cleanup runs before generation, not after — generateDailyQuest()'s
+      // "does the player already have an active Main/Side quest" check reads
+      // quest_progress directly, so a leftover dangling/duplicate row from a
+      // past bug (or a still-mid-migration account) could make it think a
+      // quest was already active and skip generating a fresh one, even
+      // though nothing valid was ever shown on screen. Cleaning first means
+      // generation always sees the same state the player is about to see.
+      await this.dedupeActiveQuests(userId);
+      await this.removeOrphanedGeneratedQuests(userId);
       await this.questGenerator.evaluateFailedQuests(userId);
       await this.questGenerator.generateDailyQuest(userId);
     } catch (err) {
       this.logger.warn(`Daily quest self-heal failed for user ${userId}: ${err instanceof Error ? err.message : err}`);
-    }
-    try {
-      // Cleanup only — must never take down the read itself. A hiccup here
-      // (bad legacy row, transient DB error) used to propagate straight out
-      // of findMine() and 500 the Status + Quests pages on every single
-      // load until someone fixed the underlying row by hand.
-      await this.dedupeActiveQuests(userId);
-      await this.removeOrphanedGeneratedQuests(userId);
-    } catch (err) {
-      this.logger.warn(`Quest cleanup self-heal failed for user ${userId}: ${err instanceof Error ? err.message : err}`);
     }
     const all = await this.questProgress.find({ where: { userId }, relations: ['quest'] });
     return all.filter((p) => p.quest && (p.quest.type === QuestType.MAIN_DAILY || p.quest.type === QuestType.SIDE));
