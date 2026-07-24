@@ -7,7 +7,7 @@ import { QuestProgress, QuestStatus } from './quest-progress.entity';
 import { rollRarity, applyRarityRewards } from './quest-rarity.config';
 import { CharactersService } from '@/characters/characters.service';
 import { User } from '@/users/user.entity';
-import { nextLocalResetTime } from '@/common/timezone.util';
+import { nextLocalResetTime, localDayOfWeek } from '@/common/timezone.util';
 
 @Injectable()
 export class QuestGeneratorService {
@@ -434,7 +434,7 @@ export class QuestGeneratorService {
       return; // Not due yet — resets at the next local 5:00 AM.
     }
 
-    const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
+    const dayOfWeek = localDayOfWeek(character.timezone); // 0=Sun ... 6=Sat, in the player's own timezone
     const template = this.VOICE_TRAINING_ROUTINE[dayOfWeek];
     if (!template) {
       // Sunday — rest the vocal cords, no quest today. Push the next check
@@ -522,7 +522,7 @@ export class QuestGeneratorService {
     const template = this.SIDE_QUEST_POOL[totalClaimed % this.SIDE_QUEST_POOL.length];
     const expiresAt = nextLocalResetTime(character.timezone);
     const { calories, waterLiters } = this.nutritionTargets(character.weightKg, character.ageYears);
-    const isRest = this.isRestDay(new Date().getDay());
+    const isRest = this.isRestDay(localDayOfWeek(character.timezone));
     const exerciseLines = isRest
       ? [`Rest day — no extra training today (see Main quest). ${template.title} picks back up on your next training day.`]
       : template.lines;
@@ -571,7 +571,7 @@ export class QuestGeneratorService {
     await this.generateVoiceTrainingQuest(userId);
 
     const character = await this.characters.getByUserId(userId);
-    const dayOfWeek = new Date().getDay(); // 0=Sun ... 6=Sat
+    const dayOfWeek = localDayOfWeek(character.timezone); // 0=Sun ... 6=Sat, in the player's own timezone
 
     // Boss weekend — no prescribed Main quest at all. Workouts that day are
     // logged freely against the World Boss itself (bosses.service.ts), not

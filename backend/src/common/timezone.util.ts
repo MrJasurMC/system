@@ -62,6 +62,23 @@ export function nextLocalResetTime(timeZone: string, from: Date = new Date()): D
   return new Date(candidate.getTime() - refinedOffset);
 }
 
+/**
+ * The day of week (0=Sun ... 6=Sat), evaluated in `timeZone` rather than the
+ * server's own local time. Quest generation (boss-weekend detection, rest
+ * days, workout-split scheduling) must agree with `nextLocalResetTime` about
+ * what "today" is, or a server running in a different offset than the
+ * player's `character.timezone` can flip to Sat/Sun (or any other day)
+ * hours before/after it actually does for the player — e.g. retiring the
+ * Main quest for "boss weekend" while it's still a normal training day
+ * locally, with no replacement quest generated.
+ */
+export function localDayOfWeek(timeZone: string, from: Date = new Date()): number {
+  const dtf = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' });
+  const weekday = dtf.format(from); // "Sun", "Mon", ...
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return map[weekday];
+}
+
 /** Common regions we expect players from — extend freely, any IANA zone works. */
 export const TIMEZONE_PRESETS: { label: string; value: string }[] = [
   { label: 'Tashkent (UTC+5)', value: 'Asia/Tashkent' },
